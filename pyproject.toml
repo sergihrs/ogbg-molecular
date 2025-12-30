@@ -1,0 +1,18 @@
+[project]
+name = "ogbg-molhiv"
+version = "0.1.0"
+description = "GINE and CSNN for ogbg-molhiv graph property prediction benchmark"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "ogb==1.3.6",
+    "torch==2.5.1",
+    "torch-geometric>=2.0.2",
+    "Numpy>=1.16.0",
+    "pandas>=0.24.0",
+    "urllib3>=1.24.0",
+    "scikit-learn>=0.20.0",
+    "outdated>=0.2.0",
+    "matplotlib>=3.10.7",
+    "seaborn>=0.13.2",
+]
