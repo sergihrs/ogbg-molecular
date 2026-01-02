@@ -26,19 +26,11 @@ def train_step(model, device, loader, optimizer, lr_scheduler, criterion):
 
     for _, batch in enumerate(loader):
         batch = batch.to(device)
-
-        if batch.x.shape[0] == 1 or batch.batch[-1] == 0:
-            pass  # Skip batches with single molecule/node if they cause BatchNorm issues (optional)
-
         pred = model(batch)
         y = batch.y.to(torch.float32)
 
-        # --- Handling Missing Labels (NaNs) ---
-        # Whether a label is valid (not NaN)
+        # Handle missing Nans in labels
         is_labeled = y == y
-
-        # Loss is calculated only on labeled tasks
-        # We perform logical indexing to flatten the valid predictions and targets
         loss = criterion(pred[is_labeled], y[is_labeled])
 
         optimizer.zero_grad()

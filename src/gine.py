@@ -70,7 +70,6 @@ class MolecularGINE(nn.Module):
         # List to store graph-level representations from every layer
         hidden_reps = [global_add_pool(h, batch)]  # Include initial representation
 
-        # for conv, bn in zip(self.convs, self.batch_norms):
         for layer_idx in range(len(self.convs)):
             h = self.convs[layer_idx](h, edge_index, edge_attr=edge_emb)
             # Pool this layer's representation and save it

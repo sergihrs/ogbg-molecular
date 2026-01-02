@@ -10,7 +10,6 @@ class CustomAtomEncoder(torch.nn.Module):
         self,
         emb_dim: int,
         atom_dim: int = 8,
-        chirality_dim: int = 3,
         hybrid_dim: int = 3,
     ):
         super(CustomAtomEncoder, self).__init__()
@@ -21,9 +20,7 @@ class CustomAtomEncoder(torch.nn.Module):
         # Atomic Number -> Medium Embedding
         self.atom_embedding = nn.Embedding(atom_dims[0], atom_dim)
 
-        # Chirality -> Small Embedding
-        # self.chirality_embedding = nn.Embedding(atom_dims[1], chirality_dim)
-        # Chirality -> Dummy ([1,0] if CHI_TETRAHEDRAL_CW, [0,1] if CHI_TETRAHEDRAL_CCW, [1,1])
+        # Chirality -> Dummy Encoding
 
         # Degree -> Numerical
         # Formal Charge -> Numerical
