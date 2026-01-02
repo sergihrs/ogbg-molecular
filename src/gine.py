@@ -10,13 +10,13 @@ from .encoders import CustomAtomEncoder, CustomBondEncoder
 class MolecularGINE(nn.Module):
     def __init__(
         self,
-        emb_dim,
-        out_dim,
-        num_layers=1,
-        dropout=0.0,
-        mlp_hidden_dim=None,
-        mlp_num_layers=1,
-        mlp_dropout=0.0,
+        emb_dim: int,
+        out_dim: int,
+        num_layers: int = 1,
+        dropout: float = 0.0,
+        mlp_hidden_dim: int = None,
+        mlp_num_layers: int = 1,
+        mlp_dropout: float = 0.0,
     ):
         super().__init__()
         self.dropout_ratio = dropout
