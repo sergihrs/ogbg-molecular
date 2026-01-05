@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
+from torch.optim.lr_scheduler import MultiStepLR, StepLR
 from tqdm import tqdm
 
 from src.data import load_data
@@ -84,6 +84,8 @@ def train_loop(
     plot_path: str,
 ) -> tuple[float, float]:
     tqdm_range = tqdm(range(max_epochs), unit="epoch")
+    best_model_epoch = 0
+    best_train_auc = 0
     best_val_auc = 0
     final_test_auc = 0
     patience_counter = 0
@@ -115,11 +117,13 @@ def train_loop(
         test_aucs.append(test_auc)
 
         # Checkpoint
-        if val_auc > best_val_auc:
+        if val_auc > best_val_auc and train_auc >= best_train_auc:
+            best_train_auc = train_auc
             best_val_auc = val_auc
             final_test_auc = test_auc
             best_model_state = model.state_dict().copy()
             patience_counter = 0
+            best_model_epoch = epoch
         else:
             patience_counter += 1
 
@@ -140,6 +144,7 @@ def train_loop(
 
     # Restore best model
     if best_model_state is not None:
+        print(f"Restoring best model from epoch {best_model_epoch}.")
         model.load_state_dict(best_model_state)
 
     # Save plot
@@ -182,15 +187,19 @@ def main():
 
     hyperparams = {
         "batch_size": 32,  # 32
+        "encoder_type": "custom",  # "custom", "default"
+        "jumping_knowledge": False,
+        "use_edge_features": True,
         "emb_dim": 32,  # 64
         "num_layers": 2,
-        "dropout": 0.1,  # 0.0, 0.5, 0.1
+        "mlp_num_layers": 2,
+        "dropout": 0.3,  # 0.0, 0.5, 0.1
         "lr": 0.001,
         "weight_decay": 1e-6,
         "max_epochs": 100,
-        "patience": 10,
-        "lr_step_size": 5,  # inf, 20
-        "lr_gamma": 0.9,  # 0.5, 0.9
+        "patience": 20,
+        "lr_step_size": 10,  # inf, 20
+        "lr_gamma": 0.707,  # 0.5, 0.9
     }
     print("Hyperparameters:", hyperparams)
 
@@ -219,6 +228,10 @@ def main():
             out_dim=dataset.num_tasks,
             num_layers=hyperparams["num_layers"],
             dropout=hyperparams["dropout"],
+            mlp_num_layers=hyperparams["mlp_num_layers"],
+            jumping_knowledge=hyperparams["jumping_knowledge"],
+            use_edge_features=hyperparams["use_edge_features"],
+            encoder_type=hyperparams["encoder_type"],
         ).to(device)
         optimizer = optim.AdamW(
             model.parameters(),
@@ -230,6 +243,11 @@ def main():
             step_size=hyperparams["lr_step_size"],
             gamma=hyperparams["lr_gamma"],
         )
+        # lr_scheduler = MultiStepLR(
+        #     optimizer,
+        #     milestones=[10],  # List of epochs where the drop happens
+        #     gamma=hyperparams["lr_gamma"],
+        # )
         criterion = nn.BCEWithLogitsLoss()
         plot_path = f"plots/{timestamp}/run_{i}.png"
         val_auc, test_auc = train_loop(
@@ -270,6 +288,13 @@ def main():
         )
         report_file.write(f"\nNumber of parameters: {trainable_params}\n")
         report_file.write(f"\nHyperparameters: {hyperparams}\n")
+
+        # Individual run results
+        report_file.write("\nIndividual Run Results:\n")
+        for i, (val_auc, test_auc) in enumerate(zip(val_aucs, test_aucs)):
+            report_file.write(
+                f"Run {i} - Best Val ROC-AUC: {val_auc:.6f}, Test ROC-AUC: {test_auc:.6f}\n"
+            )
     print(f"\nFinal report saved to {report_path}")
 
 

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from torch_geometric.nn import GINEConv, global_add_pool
 from torch_geometric.nn.models import MLP
 
@@ -14,16 +15,30 @@ class MolecularGINE(nn.Module):
         out_dim: int,
         num_layers: int = 1,
         dropout: float = 0.0,
-        mlp_hidden_dim: int = None,
-        mlp_num_layers: int = 1,
-        mlp_dropout: float = 0.0,
+        mlp_num_layers: int = 2,
+        jumping_knowledge: bool = False,
+        use_edge_features: bool = True,
+        encoder_type: str = "custom",
     ):
         super().__init__()
         self.dropout_ratio = dropout
+        self.jumping_knowledge = jumping_knowledge
 
         # Encoders
-        self.atom_encoder = CustomAtomEncoder(emb_dim=emb_dim)
-        self.bond_encoder = CustomBondEncoder(emb_dim=emb_dim)
+        atom_encoder_cls = (
+            CustomAtomEncoder if encoder_type == "custom" else AtomEncoder
+        )
+        bond_encoder_cls = (
+            CustomBondEncoder if encoder_type == "custom" else BondEncoder
+        )
+        self.atom_encoder = atom_encoder_cls(emb_dim=emb_dim)
+        if use_edge_features:
+            self.bond_encoder = bond_encoder_cls(emb_dim=emb_dim)
+        else:
+            # Use zero edge features
+            self.bond_encoder = nn.Lambda(
+                lambda x: torch.zeros((x.size(0), emb_dim), device=x.device)
+            )
 
         self.convs = nn.ModuleList()
         self.batch_norms = nn.ModuleList()
@@ -32,23 +47,26 @@ class MolecularGINE(nn.Module):
         for layer_idx in range(num_layers):
             mlp = MLP(
                 in_channels=emb_dim,
-                hidden_channels=mlp_hidden_dim or emb_dim,
+                hidden_channels=emb_dim,
                 out_channels=emb_dim,
                 num_layers=mlp_num_layers,
-                dropout=mlp_dropout,
-                activation=nn.PReLU(),
+                batch_norm=True,
             )
             self.convs.append(GINEConv(mlp))
             # Skip last batch norm after final layer
             if layer_idx < num_layers - 1:
                 self.batch_norms.append(nn.BatchNorm1d(emb_dim))
-                self.activations.append(nn.PReLU())
+                self.activations.append(nn.ReLU())
 
         # The final predictor needs to process this large concatenated vector
-        full_dim = emb_dim * (num_layers + 1)
+        if jumping_knowledge:
+            full_dim = emb_dim * (num_layers + 1)
+        else:
+            full_dim = emb_dim
         self.lin_pred = nn.Sequential(
+            nn.Dropout(dropout),
             nn.Linear(full_dim, emb_dim),
-            nn.PReLU(),
+            nn.ReLU(),
             nn.Dropout(dropout),
             nn.Linear(emb_dim, out_dim),
         )
@@ -82,9 +100,12 @@ class MolecularGINE(nn.Module):
                 h = F.dropout(h, p=self.dropout_ratio, training=self.training)
 
         # Concatenate all layers (Jumping Knowledge)
-        h_graph = torch.cat(
-            hidden_reps, dim=1
-        )  # Shape: [batch_size, emb_dim * (num_layers+1)]
+        if self.jumping_knowledge:
+            h_graph = torch.cat(
+                hidden_reps, dim=1
+            )  # Shape: [batch_size, emb_dim * (num_layers+1)]
+        else:
+            h_graph = hidden_reps[-1]  # Shape: [batch_size, emb_dim]
 
         # Final prediction
         return self.lin_pred(h_graph)
