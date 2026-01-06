@@ -176,6 +176,7 @@ def get_num_parameters(hyperparams: dict, num_tasks: int):
         jumping_knowledge=hyperparams["jumping_knowledge"],
         use_edge_features=hyperparams["use_edge_features"],
         encoder_type=hyperparams["encoder_type"],
+        norm_type=hyperparams["norm_type"],
     )
 
     # Print model architecture and number of parameters
@@ -223,6 +224,7 @@ def main(hyperparams: dict):
             jumping_knowledge=hyperparams["jumping_knowledge"],
             use_edge_features=hyperparams["use_edge_features"],
             encoder_type=hyperparams["encoder_type"],
+            norm_type=hyperparams["norm_type"],
         ).to(device)
         optimizer = optim.AdamW(
             model.parameters(),
@@ -304,6 +306,9 @@ if __name__ == "__main__":
     # Model Architecture
     parser.add_argument(
         "--encoder_type", type=str, default="he", choices=["he", "default"]
+    )
+    parser.add_argument(
+        "--norm_type", type=str, default="batch", choices=["batch", "graph"]
     )
     parser.add_argument("--emb_dim", type=int, default=64)
     parser.add_argument("--num_layers", type=int, default=2)

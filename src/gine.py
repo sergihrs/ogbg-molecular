@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from torch_geometric.nn import GINEConv, global_add_pool
 from torch_geometric.nn.models import MLP
+from torch_geometric.nn.norm import GraphNorm
 
 from .encoders import (
     HeterogeneousAtomEncoder,
@@ -23,10 +24,17 @@ class MolecularGINE(nn.Module):
         jumping_knowledge: bool = False,
         use_edge_features: bool = True,
         encoder_type: str = "he",
+        norm_type: str = "batch",
     ):
         super().__init__()
+        assert encoder_type in ["default", "he"], (
+            "encoder_type must be 'default' or 'he'"
+        )
+        assert norm_type in ["batch", "graph"], "norm_type must be 'batch' or 'graph'"
+
         self.dropout_ratio = dropout
         self.jumping_knowledge = jumping_knowledge
+        self.norm_type = norm_type
 
         # Encoders
         atom_encoder_cls = (
@@ -43,7 +51,7 @@ class MolecularGINE(nn.Module):
         self.bond_encoder = bond_encoder_cls(emb_dim=emb_dim)
 
         self.convs = nn.ModuleList()
-        self.batch_norms = nn.ModuleList()
+        self.norms = nn.ModuleList()
         self.activations = nn.ModuleList()
 
         for layer_idx in range(num_layers):
@@ -57,7 +65,8 @@ class MolecularGINE(nn.Module):
             self.convs.append(GINEConv(mlp))
             # Skip last batch norm after final layer
             if layer_idx < num_layers - 1:
-                self.batch_norms.append(nn.BatchNorm1d(emb_dim))
+                norm_cls = nn.BatchNorm1d if norm_type == "batch" else GraphNorm
+                self.norms.append(norm_cls(emb_dim))
                 self.activations.append(nn.ReLU())
 
         # The final predictor needs to process this large concatenated vector
@@ -96,8 +105,12 @@ class MolecularGINE(nn.Module):
             hidden_reps.append(global_add_pool(h, batch))
 
             # Apply BatchNorm, ReLU, Dropout except after last layer
-            if layer_idx < len(self.batch_norms):
-                h = self.batch_norms[layer_idx](h)
+            if layer_idx < len(self.norms):
+                # GraphNorm requires the batch vector
+                if self.norm_type == "graph":
+                    h = self.norms[layer_idx](h, batch)
+                else:
+                    h = self.norms[layer_idx](h)
                 h = self.activations[layer_idx](h)
                 h = F.dropout(h, p=self.dropout_ratio, training=self.training)
 
