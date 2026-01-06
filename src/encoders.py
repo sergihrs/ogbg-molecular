@@ -5,7 +5,7 @@ import torch.nn as nn
 from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 
 
-class CustomAtomEncoder(torch.nn.Module):
+class HeterogeneousAtomEncoder(torch.nn.Module):
     def __init__(
         self,
         emb_dim: int,
@@ -14,7 +14,7 @@ class CustomAtomEncoder(torch.nn.Module):
         hybrid_dim: int = 8,
         numerical_dim: int = 1,
     ):
-        super(CustomAtomEncoder, self).__init__()
+        super(HeterogeneousAtomEncoder, self).__init__()
 
         # OGB atom feature dimensions
         atom_dims = get_atom_feature_dims()
@@ -91,9 +91,9 @@ class CustomAtomEncoder(torch.nn.Module):
         return self.bn(self.lin(features))
 
 
-class CustomBondEncoder(torch.nn.Module):
+class HeterogeneousBondEncoder(torch.nn.Module):
     def __init__(self, emb_dim: int, bond_dim: int = 8, stereo_dim: int = 8):
-        super(CustomBondEncoder, self).__init__()
+        super(HeterogeneousBondEncoder, self).__init__()
 
         bond_dims = get_bond_feature_dims()
 
@@ -125,3 +125,14 @@ class CustomBondEncoder(torch.nn.Module):
 
         # Project -> Batch Norm -> (GINE ReLU)
         return self.bn(self.fusion(features))
+
+
+class ZeroBondEncoder(nn.Module):
+    def __init__(self, emb_dim: int):
+        super(ZeroBondEncoder, self).__init__()
+        self.emb_dim = emb_dim
+
+    def forward(self, edge_attr):
+        # edge_attr shape: [num_edges, num_edge_features]
+        num_edges = edge_attr.size(0)
+        return torch.zeros((num_edges, self.emb_dim), device=edge_attr.device)

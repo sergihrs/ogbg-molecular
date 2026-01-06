@@ -5,7 +5,11 @@ from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from torch_geometric.nn import GINEConv, global_add_pool
 from torch_geometric.nn.models import MLP
 
-from .encoders import CustomAtomEncoder, CustomBondEncoder
+from .encoders import (
+    HeterogeneousAtomEncoder,
+    HeterogeneousBondEncoder,
+    ZeroBondEncoder,
+)
 
 
 class MolecularGINE(nn.Module):
@@ -18,7 +22,7 @@ class MolecularGINE(nn.Module):
         mlp_num_layers: int = 2,
         jumping_knowledge: bool = False,
         use_edge_features: bool = True,
-        encoder_type: str = "custom",
+        encoder_type: str = "he",
     ):
         super().__init__()
         self.dropout_ratio = dropout
@@ -26,19 +30,17 @@ class MolecularGINE(nn.Module):
 
         # Encoders
         atom_encoder_cls = (
-            CustomAtomEncoder if encoder_type == "custom" else AtomEncoder
+            HeterogeneousAtomEncoder if encoder_type == "he" else AtomEncoder
         )
         bond_encoder_cls = (
-            CustomBondEncoder if encoder_type == "custom" else BondEncoder
+            HeterogeneousBondEncoder
+            if encoder_type == "he"
+            else BondEncoder
+            if use_edge_features
+            else ZeroBondEncoder
         )
         self.atom_encoder = atom_encoder_cls(emb_dim=emb_dim)
-        if use_edge_features:
-            self.bond_encoder = bond_encoder_cls(emb_dim=emb_dim)
-        else:
-            # Use zero edge features
-            self.bond_encoder = nn.Lambda(
-                lambda x: torch.zeros((x.size(0), emb_dim), device=x.device)
-            )
+        self.bond_encoder = bond_encoder_cls(emb_dim=emb_dim)
 
         self.convs = nn.ModuleList()
         self.batch_norms = nn.ModuleList()

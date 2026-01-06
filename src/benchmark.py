@@ -1,3 +1,4 @@
+import argparse
 import os
 from datetime import datetime
 
@@ -5,7 +6,7 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import MultiStepLR, StepLR
+from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
 from src.data import load_data
@@ -172,6 +173,10 @@ def get_num_parameters(hyperparams: dict, num_tasks: int):
         out_dim=num_tasks,
         num_layers=hyperparams["num_layers"],
         dropout=hyperparams["dropout"],
+        mlp_num_layers=hyperparams["mlp_num_layers"],
+        jumping_knowledge=hyperparams["jumping_knowledge"],
+        use_edge_features=hyperparams["use_edge_features"],
+        encoder_type=hyperparams["encoder_type"],
     )
 
     # Print model architecture and number of parameters
@@ -179,31 +184,18 @@ def get_num_parameters(hyperparams: dict, num_tasks: int):
     return num_params
 
 
-def main():
+def main(hyperparams: dict):
     print("\n--- Benchmarking GINE Model ---")
     # CPU is faster for sequential processing of graphs when deterministic
     device = torch.device("cpu")
     print(f"Using device: {device}")
 
-    hyperparams = {
-        "batch_size": 32,  # 32
-        "encoder_type": "custom",  # "custom", "default"
-        "jumping_knowledge": False,
-        "use_edge_features": True,
-        "emb_dim": 32,  # 64
-        "num_layers": 2,
-        "mlp_num_layers": 2,
-        "dropout": 0.3,  # 0.0, 0.5, 0.1
-        "lr": 0.001,
-        "weight_decay": 1e-6,
-        "max_epochs": 100,
-        "patience": 20,
-        "lr_step_size": 10,  # inf, 20
-        "lr_gamma": 0.707,  # 0.5, 0.9
-    }
+    # Print hyperparameters
     print("Hyperparameters:", hyperparams)
 
-    dataset, *loaders, evaluator = load_data(batch_size=hyperparams["batch_size"])
+    dataset, *loaders, evaluator = load_data(
+        dataset_name=hyperparams["dataset_name"], batch_size=hyperparams["batch_size"]
+    )
     train_loader, valid_loader, test_loader = loaders
 
     # Print number of trainable parameters
@@ -233,6 +225,9 @@ def main():
             use_edge_features=hyperparams["use_edge_features"],
             encoder_type=hyperparams["encoder_type"],
         ).to(device)
+        for name, param in model.named_parameters():
+            if param.requires_grad:
+                print(f"{name}: {param.numel()}")
         optimizer = optim.AdamW(
             model.parameters(),
             lr=hyperparams["lr"],
@@ -243,11 +238,6 @@ def main():
             step_size=hyperparams["lr_step_size"],
             gamma=hyperparams["lr_gamma"],
         )
-        # lr_scheduler = MultiStepLR(
-        #     optimizer,
-        #     milestones=[10],  # List of epochs where the drop happens
-        #     gamma=hyperparams["lr_gamma"],
-        # )
         criterion = nn.BCEWithLogitsLoss()
         plot_path = f"plots/{timestamp}/run_{i}.png"
         val_auc, test_auc = train_loop(
@@ -299,4 +289,35 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Benchmarking GINE Model")
+
+    # Dataset and Infrastructure
+    parser.add_argument("--dataset_name", type=str, default="ogbg-molhiv")
+    parser.add_argument("--batch_size", type=int, default=32)
+    parser.add_argument(
+        "--runs", type=int, default=10, help="Number of runs with different seeds"
+    )
+
+    # Model Architecture
+    parser.add_argument(
+        "--encoder_type", type=str, default="he", choices=["he", "default"]
+    )
+    parser.add_argument("--emb_dim", type=int, default=64)
+    parser.add_argument("--num_layers", type=int, default=2)
+    parser.add_argument("--mlp_num_layers", type=int, default=2)
+    parser.add_argument("--dropout", type=float, default=0.5)
+    parser.add_argument("--jumping_knowledge", action="store_true", default=False)
+    parser.add_argument("--use_edge_features", action="store_true", default=False)
+
+    # Training Hyperparameters
+    parser.add_argument("--lr", type=float, default=0.001)
+    parser.add_argument("--weight_decay", type=float, default=1e-6)
+    parser.add_argument("--max_epochs", type=int, default=50)
+    parser.add_argument("--patience", type=int, default=50)
+    parser.add_argument("--lr_step_size", type=int, default=10)
+    parser.add_argument("--lr_gamma", type=float, default=0.5)
+
+    args = parser.parse_args()
+    hyperparams = vars(args)
+
+    main(hyperparams)
