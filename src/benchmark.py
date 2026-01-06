@@ -6,7 +6,6 @@ import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.optim.lr_scheduler import StepLR
 from tqdm import tqdm
 
 from src.data import load_data
@@ -210,7 +209,7 @@ def main(hyperparams: dict):
     os.makedirs(f"plots/{timestamp}", exist_ok=True)
     os.makedirs("reports", exist_ok=True)
 
-    for i in range(10):  # 10 runs
+    for i in range(hyperparams["runs"]):
         print("\n--- New Run (Seed", i, ") ---")
         # Different seed each run for variability
         set_seed(i)
@@ -225,17 +224,22 @@ def main(hyperparams: dict):
             use_edge_features=hyperparams["use_edge_features"],
             encoder_type=hyperparams["encoder_type"],
         ).to(device)
-        for name, param in model.named_parameters():
-            if param.requires_grad:
-                print(f"{name}: {param.numel()}")
         optimizer = optim.AdamW(
             model.parameters(),
             lr=hyperparams["lr"],
             weight_decay=hyperparams["weight_decay"],
         )
-        lr_scheduler = StepLR(
+        # Use MultiStepLR to allow for more flexible LR scheduling
+        num_lr_updates = (
+            1
+            if hyperparams["lr_update_once"]
+            else hyperparams["max_epochs"] // hyperparams["lr_step_size"]
+        )
+        lr_scheduler = optim.lr_scheduler.MultiStepLR(
             optimizer,
-            step_size=hyperparams["lr_step_size"],
+            milestones=[
+                hyperparams["lr_step_size"] * i for i in range(1, num_lr_updates + 1)
+            ],
             gamma=hyperparams["lr_gamma"],
         )
         criterion = nn.BCEWithLogitsLoss()
@@ -267,12 +271,11 @@ def main(hyperparams: dict):
         )
 
     # Generate final report
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     report_path = f"reports/report_{timestamp}.txt"
     with open(report_path, "w") as report_file:
         report_file.write("--- BENCHMARK REPORT ---\n")
         report_file.write(
-            f"\nFinal Results over 10 runs: \n"
+            f"\nFinal Results over {hyperparams['runs']} runs:\n"
             f"Validation ROC-AUC: {torch.tensor(val_aucs).mean():.6f} ± {torch.tensor(val_aucs).std():.6f}\n"
             f"Test ROC-AUC: {torch.tensor(test_aucs).mean():.6f} ± {torch.tensor(test_aucs).std():.6f}\n"
         )
@@ -316,6 +319,7 @@ if __name__ == "__main__":
     parser.add_argument("--patience", type=int, default=50)
     parser.add_argument("--lr_step_size", type=int, default=10)
     parser.add_argument("--lr_gamma", type=float, default=0.5)
+    parser.add_argument("--lr_update_once", action="store_true", default=False)
 
     args = parser.parse_args()
     hyperparams = vars(args)
