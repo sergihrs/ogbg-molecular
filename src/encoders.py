@@ -1,7 +1,5 @@
 import torch
 import torch.nn as nn
-
-# from ogb.graphproppred.mol_encoder import AtomEncoder, BondEncoder
 from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 
 
@@ -12,7 +10,6 @@ class HeterogeneousAtomEncoder(torch.nn.Module):
         atom_dim: int = 16,
         chiral_dim: int = 4,
         hybrid_dim: int = 8,
-        numerical_dim: int = 1,
     ):
         super(HeterogeneousAtomEncoder, self).__init__()
 
@@ -24,17 +21,17 @@ class HeterogeneousAtomEncoder(torch.nn.Module):
         self.chirality_embedding = nn.Embedding(atom_dims[1], chiral_dim)
         self.hybrid_embedding = nn.Embedding(atom_dims[6], hybrid_dim)
 
-        # Linear projections for Numerical (bias=False to avoid redundancy)
-        self.degree_proj = nn.Linear(1, numerical_dim, bias=False)
-        self.charge_proj = nn.Linear(1, numerical_dim, bias=False)
-        self.num_h_proj = nn.Linear(1, numerical_dim, bias=False)
-        self.radical_proj = nn.Linear(1, numerical_dim, bias=False)
+        # Learnable scale for Numerical (bias=False to avoid redundancy)
+        self.degree_proj = nn.Linear(1, 1, bias=False)
+        self.charge_proj = nn.Linear(1, 1, bias=False)
+        self.num_h_proj = nn.Linear(1, 1, bias=False)
+        self.radical_proj = nn.Linear(1, 1, bias=False)
 
         # Is Aromatic and Is In Ring are used as-is (0/1)
 
         # Calculate input dimension for the projection layer
         self.input_dim = (
-            atom_dim + chiral_dim + hybrid_dim + (numerical_dim * 4) + 2
+            atom_dim + chiral_dim + hybrid_dim + 4 + 2
         )  # 2 for aromatic and ring features
 
         # Final projection to the GNN's expected emb_dim

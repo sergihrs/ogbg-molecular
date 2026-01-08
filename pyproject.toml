@@ -1,7 +1,7 @@
 [project]
 name = "ogbg-molhiv"
 version = "0.1.0"
-description = "GINE and CSNN for ogbg-molhiv graph property prediction benchmark"
+description = "GINE for ogbg-molhiv graph property prediction benchmark"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
