@@ -11,7 +11,7 @@ Our experiments reveal a clear hierarchy:
 
 ## 2. Submissions & Experimental Details
 
-### Submission 1: GINE + Heterogeneous Encoder (GINE-HE)
+### Submission 1: GINE + Heterogeneous Encoder (GINE+HE)
 
 **Mechanism:**
 This model introduces a novel **Heterogeneous Encoder** designed to respect the semantic type of molecular features. Unlike standard OGB encoders which treat all features as categorical integers:
@@ -23,7 +23,7 @@ This model introduces a novel **Heterogeneous Encoder** designed to respect the 
 These type-specific outputs are concatenated, projected to `emb_dim` and normalized via **Batch Normalization** before entering the GINE layers. This allows for a significantly smaller embedding dimension ($d=32$) to carry the same information density as larger standard embeddings.
 
 **OGB Hyperparameter Tuning:**
-We tuned the embedding dimension specifically to demonstrate parameter efficiency. A smaller dimension ($32$) was sufficient for GINE-HE, whereas the default encoder required $64$ to maintain performance. We observed that slightly extending the training duration (60 epochs) allowed this compact model to converge to a better optima.
+We tuned the embedding dimension specifically to demonstrate parameter efficiency. A smaller dimension ($32$) was sufficient for GINE+HE, whereas the default encoder required $64$ to maintain performance. We observed that slightly extending the training duration (60 epochs) allowed this compact model to converge to a better optima.
 
 - **Format:** `lr: [0.001*], num_layers: [2*], mlp_layers: [1, 2*, 3], emb_dim: [32*, 64], dropout: [0.475*, 0.5], lr_gamma: [0.5, 0.707*], max_epochs: [50, 60*]`
 
@@ -39,7 +39,7 @@ uv run python -m src.benchmark --encoder_type he --use_edge_features --emb_dim 3
 - **Val AUC:** 0.8099 ± 0.0080
 - **Params:** 9,393
 
-**Conclusion:** GINE-HE serves as the **efficiency champion** of this study. It achieves competitive performance (within 0.2% of the best heavy model) while using **3.5x fewer parameters**.
+**Conclusion:** GINE+HE serves as the **efficiency champion** of this study. It achieves competitive performance (within 0.2% of the best heavy model) while using **3.5x fewer parameters**.
 
 ---
 
