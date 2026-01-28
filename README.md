@@ -1,35 +1,44 @@
 # GINE-Mol: Graph Isomorphism Networks for Molecular Property Prediction
 
 [![Dataset: OGBG-MolHIV](https://img.shields.io/badge/OGB-molhiv-blue)](https://ogb.stanford.edu/docs/graphprop/#ogbg-molhiv)
+[![OGB Leaderboard](https://img.shields.io/badge/OGB_Leaderboard-ogbg%2D-molhiv-blue?style=flat&logo=stanford)](https://ogb.stanford.edu/docs/leader_graphprop/)
 [![Framework: PyTorch Geometric](https://img.shields.io/badge/Framework-PyTorch_Geometric-orange)](https://pytorch-geometric.readthedocs.io/)
 [![Technical Report](https://img.shields.io/badge/Read-Technical_Report-green)](report.md)
 
-This repository provides a benchmark submission for the **ogbg-molhiv** dataset using **Graph Isomorphism Network with Edge Features (GINE)**. The project introduces a specialized **Heterogeneous Encoder** (GINE+HE) that drastically reduces parameter count (by >3x) while maintaining competitive performance against standard GIN architectures.
+This repository provides official benchmark submissions for the **ogbg-molhiv** dataset based on **Graph Isomorphism Networks with Edge Features (GINE)**. The primary contribution is a **Heterogeneous Encoder (GINE+HE)** that reduces parameter count by over 70% while maintaining competitive performance.
+In addition, we provide a **GINE implementation** with **default OGB encoders** achieving the **best performance** (0.7921 with 33k parameters) and an **optimized GIN baseline** outperforming previous leaderboard entries.
 
-> **For a deep dive into the methodology, ablation studies, and negative results, please read the [Technical Report](report.md).**
+> **For detailed methodology, architectural justification, and ablation results, refer to the [Technical Report](report.md).**
+
+## Performance and Leaderboard
+
+As of Jan 28, 2026, the following submissions appear in the Top 25 of the official `ogbg-molhiv` [leaderboard](<https://ogb.stanford.edu/docs/leader_graphprop/#:~:text=Sergio%20Herreros%20(ICAI)>):
+
+| Rank    | Method                     | Test AUC            | Validation AUC      | # Parameters |
+| :------ | :------------------------- | :------------------ | :------------------ | :----------- |
+| **#19** | **GINE (Default Encoder)** | **0.7921 ± 0.0128** | 0.7987 ± 0.0075     | 33,217       |
+| **#20** | **GIN**                    | 0.7908 ± 0.0102     | 0.7944 ± 0.0140     | 32,385       |
+| **#22** | **GINE+HE**                | 0.7903 ± 0.0079     | **0.8099 ± 0.0080** | **9,393**    |
+| _#26_   | _GIN (Baseline)_           | _0.7835 ± 0.0125_   | _0.8010 ± 0.0078_   | _32,385_     |
+
+<details>
+  <summary><strong>📸 Click to view Leaderboard Verification Screenshot (Jan 2026)</strong></summary>
+  <br>
+  <img src="assets/leaderboard_proof.png" alt="OGB Leaderboard Ranks 19-22" width="100%">
+  <br>
+  <em>Official standing on the OGB Graph Property Prediction Leaderboard for ogbg-molhiv.</em>
+</details>
 
 ## 🛠️ Methods & Architectures
 
-1.  **GIN (Baseline Reproduction):** A reproduction of the current leaderboard GIN entry by William Bruns [4], optimized with `StepLR`, internal Batch Normalization, and hyperparameter tuning for maximum stability.
+1.  **GIN (Baseline Reproduction):** A reproduction of previous leaderboard entries [4], optimized with `StepLR`, internal Batch Normalization, and extensive hyperparameter tuning for maximum stability.
 2.  **GINE (Default Encoder):** Incorporates edge features into the message passing aggregation as proposed by Hu et al. [1]. It utilizes OGB's default encoders where all node and edge features are treated as categorical, projected to a common embedding space, and summed.
 3.  **GINE+HE (Heterogeneous Encoder):** A specialized encoder designed to respect the underlying semantics and type of molecular data:
-
     - **Categorical Features** (e.g., Atom Type, Hybridization) are mapped via learnable embeddings with dimensions scaled to feature cardinality.
     - **Numerical Features** (e.g., Degree, Formal Charge) are scaled through a learnable weight to preserve ordinal relationships.
     - **Boolean Features** (e.g., Aromaticity, Conjugation) are processed as raw `0.0/1.0` float scalars.
 
-    **Fusion Strategy:** All mapped features are **concatenated** into a single dense vector. This vector is then projected through a linear layer to the final embedding dimension.
-
-## 🔬 Experimental Results (ogbg-molhiv)
-
-| Method                     | Test AUC            | Validation AUC      | # Parameters | Hardware                      |
-| :------------------------- | :------------------ | :------------------ | :----------- | :---------------------------- |
-| **GINE (Default Encoder)** | **0.7921 ± 0.0128** | 0.7987 ± 0.0075     | 33,217       | CPU                           |
-| **GINE+HE**                | 0.7903 ± 0.0079     | **0.8099 ± 0.0080** | **9,393**    | CPU                           |
-| GIN                        | 0.7908 ± 0.0102     | 0.7944 ± 0.0140     | 32,385       | CPU                           |
-| _GIN (W. Bruns)_           | _0.7835 ± 0.0125_   | _0.8010 ± 0.0078_   | _32,385_     | _CPU; Colab L4 for HP search_ |
-
-> **n.b.** _GINE+HE_ achieves statistically comparable test accuracy to the heavy models while using **71% fewer parameters**, proving that intelligent feature encoding is more efficient than raw parameter scaling.
+    **Fusion Strategy:** All mapped features are **concatenated** into a single dense vector and projected through a linear layer to the final embedding dimension.
 
 ## 📦 Installation
 
