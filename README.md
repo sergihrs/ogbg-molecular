@@ -3,12 +3,12 @@
 [![Dataset: OGBG-MolHIV](https://img.shields.io/badge/OGB-molhiv-blue)](https://ogb.stanford.edu/docs/graphprop/#ogbg-molhiv)
 [![OGB Leaderboard](https://img.shields.io/badge/OGB_Leaderboard-ogbg%2D-molhiv-blue?style=flat&logo=stanford)](https://ogb.stanford.edu/docs/leader_graphprop/)
 [![Framework: PyTorch Geometric](https://img.shields.io/badge/Framework-PyTorch_Geometric-orange)](https://pytorch-geometric.readthedocs.io/)
-[![Technical Report](https://img.shields.io/badge/Read-Technical_Report-green)](report.md)
+[![Technical Report](https://img.shields.io/badge/Read-Technical_Report-green)](./REPORT.md)
 
 This repository provides official benchmark submissions for the **ogbg-molhiv** dataset based on **Graph Isomorphism Networks with Edge Features (GINE)**. The primary contribution is a **Heterogeneous Encoder (GINE+HE)** that reduces parameter count by over 70% while maintaining competitive performance.
 In addition, we provide a **GINE implementation** with **default OGB encoders** achieving the **best performance** (0.7921 with 33k parameters) and an **optimized GIN baseline** outperforming previous leaderboard entries.
 
-> **For detailed methodology, architectural justification, and ablation results, refer to the [Technical Report](report.md).**
+> **For detailed methodology, architectural justification, and ablation results, refer to the [Technical Report](./REPORT.md).**
 
 ## Performance and Leaderboard
 
